@@ -525,164 +525,143 @@
     </div>
   </div>
 
-  <script>
-    // 🔧 PASTE your Cloudflare Worker URL here after you create it (Step 2 below)
-    // Example: "https://the-call-email.yourname.workers.dev/send"
-    const EMAIL_ENDPOINT = "https://the-call-email.fabiodinizpelacio.workers.dev";
-;
+ <script>
+  const totalQuestions = 12;
 
-    const totalQuestions = 12;
+  const barFill = document.getElementById('barFill');
+  const progressText = document.getElementById('progressText');
+  const warn = document.getElementById('warn');
+  const resultBox = document.getElementById('resultBox');
 
-    const barFill = document.getElementById('barFill');
-    const progressText = document.getElementById('progressText');
-    const warn = document.getElementById('warn');
-    const resultBox = document.getElementById('resultBox');
+  const sendBtn = document.getElementById('sendBtn');
+  const resetBtn  = document.getElementById('resetBtn');
+  const emailInput = document.getElementById('email');
+  const form = document.getElementById('assessmentForm');
 
-    const sendBtn = document.getElementById('sendBtn');
-    const resetBtn  = document.getElementById('resetBtn');
-    const emailInput = document.getElementById('email');
-    const form = document.getElementById('assessmentForm');
-
-    function getAnsweredCount(){
-      let count = 0;
-      for (let i = 1; i <= totalQuestions; i++){
-        if (form.querySelector(`input[name="q${i}"]:checked`)) count++;
-      }
-      return count;
+  function getAnsweredCount(){
+    let count = 0;
+    for (let i = 1; i <= totalQuestions; i++){
+      if (form.querySelector(`input[name="q${i}"]:checked`)) count++;
     }
+    return count;
+  }
 
-    function updateProgress(){
-      const answered = getAnsweredCount();
-      const pct = Math.round((answered / totalQuestions) * 100);
-      barFill.style.width = pct + "%";
-      progressText.textContent = `${answered} / ${totalQuestions}`;
+  function updateProgress(){
+    const answered = getAnsweredCount();
+    const pct = Math.round((answered / totalQuestions) * 100);
+    barFill.style.width = pct + "%";
+    progressText.textContent = `${answered} / ${totalQuestions}`;
+  }
+
+  function compute(){
+    let total = 0;
+    const answers = [];
+    for (let i = 1; i <= totalQuestions; i++){
+      const chosen = form.querySelector(`input[name="q${i}"]:checked`);
+      if (!chosen) return null;
+      const v = parseInt(chosen.value, 10);
+      total += v;
+      answers.push(v);
     }
+    return { total, answers };
+  }
 
-    function compute(){
-      let total = 0;
-      const answers = [];
-      for (let i = 1; i <= totalQuestions; i++){
-        const chosen = form.querySelector(`input[name="q${i}"]:checked`);
-        if (!chosen) return null;
-        const v = parseInt(chosen.value, 10);
-        total += v;
-        answers.push(v);
-      }
-      return { total, answers };
+  function stageFor(total){
+    if (total <= 21) return { name: "Return to First Love", range: "12–21" };
+    if (total <= 30) return { name: "Strengthen What Remains", range: "22–30" };
+    if (total <= 39) return { name: "Abide and Bear More Fruit", range: "31–39" };
+    return { name: "Remain Watchful and Humble", range: "40–48" };
+  }
+
+  function setWarn(msg){
+    warn.style.display = "block";
+    warn.textContent = msg;
+    resultBox.style.display = "none";
+  }
+
+  function clearWarn(){
+    warn.style.display = "none";
+    warn.textContent = "";
+  }
+
+  function showResultSummary(total){
+    const st = stageFor(total);
+    resultBox.style.display = "block";
+    resultBox.innerHTML = `
+      <b>Total score:</b> ${total} / 48<br/>
+      <b>Stage:</b> ${st.name} (${st.range})
+    `;
+  }
+
+  function buildEmailBody(total, answers){
+    const st = stageFor(total);
+
+    const lines = [];
+    lines.push("YWAM LA — Life Dedicated to the Lord (Self-Assessment)");
+    lines.push("");
+    lines.push(`Total Score: ${total} / 48`);
+    lines.push(`Stage: ${st.name} (${st.range})`);
+    lines.push("");
+    lines.push("My Answers (1–4):");
+    for (let i = 1; i <= totalQuestions; i++){
+      lines.push(`Q${i}: ${answers[i-1]}`);
     }
+    lines.push("");
+    lines.push("Personal Prayer / Reflection:");
+    lines.push("(Write what the Holy Spirit highlights)");
+    lines.push("");
+    lines.push("— This email was generated privately in my browser. No answers were stored online.");
 
-    // Stage ranges (you can tweak later)
-    function stageFor(total){
-      if (total <= 21) return { name: "Return to First Love", range: "12–21" };
-      if (total <= 30) return { name: "Strengthen What Remains", range: "22–30" };
-      if (total <= 39) return { name: "Abide and Bear More Fruit", range: "31–39" };
-      return { name: "Remain Watchful and Humble", range: "40–48" };
-    }
+    return lines.join("\n");
+  }
 
-    function setWarn(msg){
-      warn.style.display = "block";
-      warn.textContent = msg;
-      resultBox.style.display = "none";
-    }
-    function clearWarn(){
-      warn.style.display = "none";
-      warn.textContent = "";
-    }
+  function openMailto(toEmail, subject, body){
+    const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+  }
 
-    function showResultSummary(total){
-      const st = stageFor(total);
-      resultBox.style.display = "block";
-      resultBox.innerHTML = `<b>Total score:</b> ${total} / 48<br/><b>Stage:</b> ${st.name} <span style="color: rgba(255,255,255,0.7)">(${st.range})</span>`;
-    }
-
-    // Email body format: score+stage first, then answers
-    function buildEmailText(total, answers){
-      const st = stageFor(total);
-      const lines = [];
-      lines.push("YWAM LA — Life Dedicated to the Lord (Self-Assessment)");
-      lines.push("");
-      lines.push(`Total score: ${total} / 48`);
-      lines.push(`Stage: ${st.name} (${st.range})`);
-      lines.push("");
-      lines.push("Answers (1–4):");
-      for (let i = 1; i <= totalQuestions; i++){
-        lines.push(`Q${i}: ${answers[i-1]}`);
-      }
-      lines.push("");
-      lines.push("Personal Notes / Prayer:");
-      lines.push("(Write what the Holy Spirit highlights)");
-      return lines.join("\n");
-    }
-
-    async function sendEmail(toEmail, subject, text){
-      if (!EMAIL_ENDPOINT || EMAIL_ENDPOINT.includes("PASTE_YOUR_WORKER_SEND_URL_HERE")){
-        throw new Error("Email endpoint is not configured yet.");
-      }
-
-      const res = await fetch(EMAIL_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: toEmail, subject, text })
-      });
-
-      if (!res.ok){
-        const msg = await res.text().catch(() => "");
-        throw new Error(msg || "Email request failed.");
-      }
-      return true;
-    }
-
-    form.addEventListener('change', () => {
-      updateProgress();
-      clearWarn();
-      const computed = compute();
-      if (computed) showResultSummary(computed.total);
-      else resultBox.style.display = "none";
-    });
-
-    sendBtn.addEventListener('click', async () => {
-      clearWarn();
-
-      const email = (emailInput.value || "").trim();
-      if (!email || !email.includes("@")){
-        setWarn("Please enter a valid email address.");
-        return;
-      }
-
-      const computed = compute();
-      if (!computed){
-        setWarn("Please answer all 12 questions first.");
-        return;
-      }
-
-      showResultSummary(computed.total);
-
-      // UX: show a temporary message
-      resultBox.style.display = "block";
-      resultBox.innerHTML = `<b>Sending...</b> Please wait.`;
-
-      const subject = "YWAM LA — Self-Assessment Results";
-      const text = buildEmailText(computed.total, computed.answers);
-
-      try{
-        await sendEmail(email, subject, text);
-        const st = stageFor(computed.total);
-        resultBox.innerHTML = `<b>Sent ✅</b><br/>Total score: ${computed.total} / 48<br/>Stage: ${st.name} <span style="color: rgba(255,255,255,0.7)">(${st.range})</span>`;
-      } catch (e){
-        setWarn(`Could not send email: ${e.message}`);
-      }
-    });
-
-    resetBtn.addEventListener('click', () => {
-      form.reset();
-      emailInput.value = "";
-      clearWarn();
-      resultBox.style.display = "none";
-      updateProgress();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
-
+  form.addEventListener('change', () => {
     updateProgress();
-  </script>
+    clearWarn();
+    const computed = compute();
+    if (computed) showResultSummary(computed.total);
+    else resultBox.style.display = "none";
+  });
+
+  sendBtn.addEventListener('click', () => {
+    clearWarn();
+
+    const email = (emailInput.value || "").trim();
+    if (!email || !email.includes("@")){
+      setWarn("Please enter a valid email address.");
+      return;
+    }
+
+    const computed = compute();
+    if (!computed){
+      setWarn("Please answer all 12 questions first.");
+      return;
+    }
+
+    showResultSummary(computed.total);
+
+    const subject = "YWAM LA — Self-Assessment Results";
+    const body = buildEmailBody(computed.total, computed.answers);
+
+    openMailto(email, subject, body);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    form.reset();
+    emailInput.value = "";
+    clearWarn();
+    resultBox.style.display = "none";
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  updateProgress();
+</script>
+
 </body>
 </html>
