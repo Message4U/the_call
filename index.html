@@ -705,9 +705,15 @@
 
 
   function openMailto(toEmail, subject, body){
-    const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
-  }
+  // Gmail (mailto) is picky: it often needs CRLF newlines to preserve spacing.
+  const normalizedBody = body.replace(/\n/g, "\r\n");
+  const mailto =
+    `mailto:${encodeURIComponent(toEmail)}` +
+    `?subject=${encodeURIComponent(subject)}` +
+    `&body=${encodeURIComponent(normalizedBody)}`;
+  window.location.href = mailto;
+}
+
 
   form.addEventListener('change', () => {
     updateProgress();
